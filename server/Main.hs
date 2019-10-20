@@ -104,7 +104,7 @@ playCheckers clientMVar1 clientMVar2 board = do
   sendAll clientSocket2
           (encode (Game board { mySide = Black, fileName = name }))
   forkIO $ playCheckers clientMVar1 clientMVar2 board
-  loop filePath clientSocket1 clientSocket2 board
+  loop 1 filePath clientSocket1 clientSocket2 board
   forkIO $ handleMessage clientMVar1 clientMVar2 clientSocket1
   forkIO $ handleMessage clientMVar1 clientMVar2 clientSocket2
   return ()
@@ -193,14 +193,19 @@ watcherLoop mVar1 mVar2 views key sock size = do
               (encode (Watch (fromJust (M.lookup (key + change) views))))
             watcherLoop mVar1 mVar2 views (key + change) sock size
 
-loop :: FilePath -> Socket -> Socket -> Board -> IO ()
-loop filePath clientSocket1 clientSocket2 board = do
+loop :: Int -> FilePath -> Socket -> Socket -> Board -> IO ()
+loop number filePath clientSocket1 clientSocket2 board = do
+  let newNumber = if (activePlayer board) == White
+                  then number + 1
+                  else number
+  when (newNumber /= number) $ appendFile filePath (show number ++ ". ")
   newBoard <- loop1 filePath clientSocket1 clientSocket2 board
   if isNothing (winner newBoard)
     then do
       let winnerSide = checkWinner newBoard
       case winnerSide of
-        Nothing -> loop filePath
+        Nothing -> loop newNumber
+                        filePath
                         clientSocket1
                         clientSocket2
                         newBoard { winner = winnerSide }
@@ -237,8 +242,7 @@ loop1 filePath clientSocket1 clientSocket2 board = do
   if activePlayer board == White
     then do
       if (isNothing (winner newBoard))
-        then do
-          appendFile filePath "1. "
+        then
           writeToFile filePath newBoard
         else do
           if ((winner newBoard) == Just White)
