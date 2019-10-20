@@ -103,10 +103,11 @@ playCheckers clientMVar1 clientMVar2 board = do
           (encode (Game board { mySide = White, fileName = name }))
   sendAll clientSocket2
           (encode (Game board { mySide = Black, fileName = name }))
+  forkIO $ playCheckers clientMVar1 clientMVar2 board
   loop filePath clientSocket1 clientSocket2 board
   forkIO $ handleMessage clientMVar1 clientMVar2 clientSocket1
   forkIO $ handleMessage clientMVar1 clientMVar2 clientSocket2
-  playCheckers clientMVar1 clientMVar2 board
+  return ()
 
 handleMessage :: MVar Socket -> MVar Socket -> Socket -> IO ()
 handleMessage mVar1 mVar2 socket = do
